@@ -144,10 +144,16 @@ public class KafkaStepDefinitions {
 
     @Then("the consumer should receive {int} messages")
     public void theConsumerShouldReceiveMessages(int expectedCount) throws InterruptedException {
-        boolean received = kafkaConsumerService.waitForMessage(15, TimeUnit.SECONDS);
+        // Poll until expected count is reached or timeout
+        long timeoutMs = 15000;
+        long startTime = System.currentTimeMillis();
         
-        // Wait a bit more to ensure all messages are received
-        Thread.sleep(1000);
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            if (kafkaConsumerService.getMessageCount() >= expectedCount) {
+                break;
+            }
+            kafkaConsumerService.waitForMessage(500, TimeUnit.MILLISECONDS);
+        }
         
         int actualCount = kafkaConsumerService.getMessageCount();
         assertEquals(expectedCount, actualCount, 
@@ -157,11 +163,18 @@ public class KafkaStepDefinitions {
     @Then("the consumer should receive messages in order:")
     public void theConsumerShouldReceiveMessagesInOrder(DataTable dataTable) throws InterruptedException {
         List<Map<String, String>> expectedMessages = dataTable.asMaps(String.class, String.class);
+        int expectedCount = expectedMessages.size();
         
-        boolean received = kafkaConsumerService.waitForMessage(15, TimeUnit.SECONDS);
+        // Poll until expected count is reached or timeout
+        long timeoutMs = 15000;
+        long startTime = System.currentTimeMillis();
         
-        // Wait a bit more to ensure all messages are received
-        Thread.sleep(1000);
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            if (kafkaConsumerService.getMessageCount() >= expectedCount) {
+                break;
+            }
+            kafkaConsumerService.waitForMessage(500, TimeUnit.MILLISECONDS);
+        }
         
         List<String> actualMessages = kafkaConsumerService.getReceivedMessages();
         assertEquals(expectedMessages.size(), actualMessages.size(), 

@@ -1,3 +1,4 @@
+@kafka
 Feature: Kafka Messaging
   As a message producer and consumer
   I want to publish and consume messages through Kafka
