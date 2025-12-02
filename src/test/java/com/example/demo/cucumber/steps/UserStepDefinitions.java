@@ -2,6 +2,9 @@ package com.example.demo.cucumber.steps;
 
 import com.example.demo.model.User;
 import com.example.demo.service.UserService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
@@ -28,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Contains the implementation of Gherkin steps.
  */
 public class UserStepDefinitions {
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @LocalServerPort
     private int port;
@@ -144,25 +149,29 @@ public class UserStepDefinitions {
     }
 
     @And("the response should contain user with name {string}")
-    public void theResponseShouldContainUserWithName(String expectedName) {
+    public void theResponseShouldContainUserWithName(String expectedName) throws JsonProcessingException {
         String body = (String) response.getBody();
         assertNotNull(body);
-        assertTrue(body.contains(expectedName), "Response should contain name: " + expectedName);
+        JsonNode jsonNode = objectMapper.readTree(body);
+        String actualName = jsonNode.has("name") ? jsonNode.get("name").asText() : null;
+        assertEquals(expectedName, actualName, "Response should contain user with name: " + expectedName);
     }
 
     @And("the response should contain user with email {string}")
-    public void theResponseShouldContainUserWithEmail(String expectedEmail) {
+    public void theResponseShouldContainUserWithEmail(String expectedEmail) throws JsonProcessingException {
         String body = (String) response.getBody();
         assertNotNull(body);
-        assertTrue(body.contains(expectedEmail), "Response should contain email: " + expectedEmail);
+        JsonNode jsonNode = objectMapper.readTree(body);
+        String actualEmail = jsonNode.has("email") ? jsonNode.get("email").asText() : null;
+        assertEquals(expectedEmail, actualEmail, "Response should contain user with email: " + expectedEmail);
     }
 
     @And("the response should contain {int} users")
-    public void theResponseShouldContainUsers(int expectedCount) {
+    public void theResponseShouldContainUsers(int expectedCount) throws JsonProcessingException {
         String body = (String) response.getBody();
         assertNotNull(body);
-        // Count occurrences of "id" in JSON array to determine number of users
-        int count = body.split("\"id\"").length - 1;
-        assertEquals(expectedCount, count, "Response should contain " + expectedCount + " users");
+        JsonNode jsonArray = objectMapper.readTree(body);
+        assertTrue(jsonArray.isArray(), "Response should be a JSON array");
+        assertEquals(expectedCount, jsonArray.size(), "Response should contain " + expectedCount + " users");
     }
 }
