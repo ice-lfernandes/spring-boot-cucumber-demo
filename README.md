@@ -1,6 +1,6 @@
 # Spring Boot Cucumber BDD Demo
 
-A comprehensive demonstration of Behavior Driven Development (BDD) using Spring Boot and Cucumber. This project showcases how to integrate Cucumber with Spring Boot for writing expressive, human-readable tests.
+A comprehensive demonstration of Behavior Driven Development (BDD) using Spring Boot and Cucumber. This project showcases how to integrate Cucumber with Spring Boot for writing expressive, human-readable tests, including Kafka messaging scenarios.
 
 ## Table of Contents
 
@@ -10,6 +10,7 @@ A comprehensive demonstration of Behavior Driven Development (BDD) using Spring 
 - [Getting Started](#getting-started)
 - [Understanding BDD and Cucumber](#understanding-bdd-and-cucumber)
 - [Feature Files](#feature-files)
+- [Kafka Messaging](#kafka-messaging)
 - [Step Definitions](#step-definitions)
 - [Running Tests](#running-tests)
 - [Test Reports](#test-reports)
@@ -20,10 +21,12 @@ This demo project demonstrates:
 
 - Spring Boot REST API implementation
 - Cucumber BDD integration with Spring Boot
+- **Kafka messaging with publish and consume scenarios**
 - Writing Gherkin feature files
 - Creating step definitions
 - Using data tables in scenarios
 - Test configuration and runners
+- **Testcontainers for Kafka integration testing**
 
 ## Project Structure
 
@@ -36,6 +39,10 @@ spring-boot-cucumber-demo/
 │   │   │       ├── DemoApplication.java          # Main application class
 │   │   │       ├── controller/
 │   │   │       │   └── UserController.java       # REST controller
+│   │   │       ├── kafka/
+│   │   │       │   ├── KafkaConfig.java          # Kafka configuration
+│   │   │       │   ├── KafkaProducerService.java # Kafka producer
+│   │   │       │   └── KafkaConsumerService.java # Kafka consumer
 │   │   │       ├── model/
 │   │   │       │   └── User.java                 # User model
 │   │   │       └── service/
@@ -46,15 +53,17 @@ spring-boot-cucumber-demo/
 │       ├── java/
 │       │   └── com/example/demo/cucumber/
 │       │       ├── config/
-│       │       │   └── CucumberSpringConfiguration.java  # Cucumber-Spring config
+│       │       │   └── CucumberSpringConfiguration.java  # Cucumber-Spring config with Testcontainers
 │       │       ├── runner/
 │       │       │   └── CucumberTestRunner.java   # Test runner
 │       │       └── steps/
-│       │           └── UserStepDefinitions.java  # Step definitions
+│       │           ├── UserStepDefinitions.java  # User step definitions
+│       │           └── KafkaStepDefinitions.java # Kafka step definitions
 │       └── resources/
 │           ├── application-test.properties      # Test config
 │           └── features/
-│               └── user-management.feature      # Gherkin feature file
+│               ├── user-management.feature      # User management scenarios
+│               └── kafka-messaging.feature      # Kafka messaging scenarios
 └── pom.xml                                      # Maven configuration
 ```
 
@@ -62,6 +71,7 @@ spring-boot-cucumber-demo/
 
 - Java 17 or higher
 - Maven 3.6 or higher
+- Docker (for running Kafka Testcontainers)
 
 ## Getting Started
 
@@ -162,6 +172,63 @@ Scenario: Get all users
   Then the response should contain 2 users
 ```
 
+## Kafka Messaging
+
+This project demonstrates Kafka message publishing and consuming with BDD scenarios.
+
+### Kafka Feature File Example
+
+```gherkin
+Feature: Kafka Messaging
+  As a message producer and consumer
+  I want to publish and consume messages through Kafka
+  So that I can verify asynchronous message processing
+
+  Background:
+    Given the Kafka service is running
+
+  Scenario: Publish a message to Kafka topic
+    Given I have a message with content "Hello Kafka!"
+    When I publish the message to topic "user-events"
+    Then the message should be published successfully
+
+  Scenario: Consume a message from Kafka topic
+    Given I have a message with content "User created event"
+    When I publish the message to topic "user-events"
+    Then the consumer should receive the message "User created event"
+
+  Scenario: Publish user event to Kafka
+    Given I have a user event with name "John Doe" and email "john@example.com"
+    When I publish the user event to topic "user-events"
+    Then the message should be published successfully
+    And the consumer should receive a message containing "John Doe"
+```
+
+### Kafka Components
+
+| Component             | Purpose                                    |
+|----------------------|-------------------------------------------|
+| KafkaProducerService | Publishes messages to Kafka topics        |
+| KafkaConsumerService | Consumes messages from Kafka topics       |
+| KafkaConfig          | Kafka producer and consumer configuration |
+
+### Testcontainers Integration
+
+The project uses Testcontainers to spin up a real Kafka instance during tests:
+
+```java
+@Container
+static KafkaContainer kafka = new KafkaContainer(
+        DockerImageName.parse("confluentinc/cp-kafka:7.5.0")
+);
+
+@DynamicPropertySource
+static void kafkaProperties(DynamicPropertyRegistry registry) {
+    kafka.start();
+    registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+}
+```
+
 ## Step Definitions
 
 Step definitions connect Gherkin steps to Java code. They are located in `src/test/java/com/example/demo/cucumber/steps/`.
@@ -221,6 +288,9 @@ After running tests, reports are generated in `target/cucumber-reports/`:
 |--------------------------------|-----------------------------------|
 | spring-boot-starter-web        | Spring Boot web framework         |
 | spring-boot-starter-test       | Testing utilities                 |
+| spring-kafka                   | Spring Kafka integration          |
+| spring-kafka-test              | Kafka testing utilities           |
+| testcontainers-kafka           | Kafka Testcontainers              |
 | cucumber-java                  | Cucumber for Java                 |
 | cucumber-spring                | Cucumber-Spring integration       |
 | cucumber-junit-platform-engine | JUnit 5 integration               |
